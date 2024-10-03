@@ -1,9 +1,7 @@
-import { spawn } from "node:child_process";
-import { writeFileSync } from "node:fs";
 import { stdin, stdout } from "node:process";
 import readline from "node:readline";
 import { getCustomers, loadCustomers, newCustomer, storeCustomer } from "./crm.js";
-import { getInvoices, loadInvoices, newInvoice, storeInvoice, getInvoice, finalizeInvoice, cancelInvoice, addPosition, removePosition, calculateMetrics } from "./invoice.js";
+import { getInvoices, loadInvoices, newInvoice, storeInvoice, getInvoice, finalizeInvoice, cancelInvoice, addPosition, removePosition, calculateMetrics, generatePdf, sendViaEmail } from "./invoice.js";
 import { getTimeTrackingEntries, loadTimeTrackingEntries, startTimeTracking, stopTimeTracking } from "./timetracking.js";
 
 const ask = async (question) => {
@@ -213,40 +211,13 @@ async function main() {
     cli.addCmd(['invoice', 'generatePdf'], (options) => {
         const invoice = ensureInvoice(options);
 
-        const content = `---
-number: ${invoice.number}
-dueIn: ${invoice.dueInDays}
-customer:
-    name: ${invoice.customer.name}
-    email: ${invoice.customer.email}
-    address: |
-        ${invoice.customer.address}
-position:
-    ${invoice.positions.map((pos) => {
-    return `
-    - name: |
-        ${pos.description}
-      amount: ${pos.hours}
-      unit: h
-      price: ${pos.amount / pos.hours}
-      vat: ${pos.taxPercentage}`
-    }).join('\n\t')}
-...
-        `;
+        generatePdf(invoice);
+    }, 'Use the latex template to create a invoice.', ['--invoiceId'])
 
-        writeFileSync('/tmp/' + invoice.$id + ".md", content, {flag: 'w+'})
+    cli.addCmd(['invoice', 'sharePdf'], (options) => {
+        const invoice = ensureInvoice(options);
 
-        const x = spawn(`pandoc /tmp/${invoice.$id}.md -o ${invoice.$id}.pdf --template=invoice`, {
-            shell: true,
-            cwd: process.cwd(),
-        })
-
-        x.stdout.on('data', (dt) => {
-            console.log(dt.toString())
-        })
-        x.stderr.on('data', (dt) => {
-            console.log(dt.toString())
-        })
+        sendViaEmail(invoice);
     }, 'Use the latex template to create a invoice.', ['--invoiceId'])
 
     cli.addCmd(['invoice', 'cancel'], (options) => {

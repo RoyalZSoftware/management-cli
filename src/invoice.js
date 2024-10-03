@@ -1,3 +1,5 @@
+import { spawn, spawnSync } from "node:child_process";
+import { writeFileSync } from "node:fs";
 import { getCustomer } from "./crm.js";
 import { ID } from "./id.js";
 import { TestStorage } from './storage.js';
@@ -120,3 +122,35 @@ export const storeInvoice = (invoice) => {
     saveInvoices();
 }
 
+export function generatePdf(invoice) {
+    const content = `---
+number: ${invoice.number}
+dueIn: ${invoice.dueInDays}
+customer:
+    name: ${invoice.customer.name}
+    email: ${invoice.customer.email}
+    address: |
+        ${invoice.customer.address}
+position:
+    ${invoice.positions.map((pos) => {
+    return `
+    - name: |
+        ${pos.description}
+      amount: ${pos.hours}
+      unit: h
+      price: ${pos.amount / pos.hours}
+      vat: ${pos.taxPercentage}`
+    }).join('\n\t')}
+...`;
+
+    writeFileSync('/tmp/' + invoice.$id + ".md", content, {flag: 'w+'})
+
+    spawnSync(`pandoc /tmp/${invoice.$id}.md -o ${invoice.$id}.pdf --template=invoice`, {
+        shell: true,
+        cwd: process.cwd(),
+    })
+}
+
+export function sendViaEmail(invoice) {
+    spawn(`open 'mailto:${invoice.customer.email}?subject=Rechnung&body=HalloWelt'`, {shell: true});
+}
