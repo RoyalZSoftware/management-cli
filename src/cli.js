@@ -23,7 +23,9 @@ function Cli() {
     let commands = {};
     const showHelp = () => {
         console.log("CLI Help!")
+        console.log("This CLI aims to create simple invoices. Managing a business file based.")
         console.log("")
+        
         Object.entries(commands).forEach(([path, command]) => {
             console.log(" . ", path.replace(".", " "), (command.options ? command.options.map(c => c + ' <VAL>').join(' ') : "") +  " - " + command.description);
         });
@@ -151,7 +153,7 @@ async function main() {
         if (!verified) return;
 
         addPosition(invoice, position);
-    }, "Add position to invoice", ['--invoiceId', '--type']);
+    }, "Add position to invoice", ['--invoiceId']);
 
     cli.addCmd(['invoice', 'delPosition'], async (options) => {
         const invoice = ensureInvoice(options);
@@ -205,8 +207,6 @@ position:
 ...
         `;
 
-        console.log(content);
-
         writeFileSync('/tmp/' + invoice.$id + ".md", content, {flag: 'w+'})
 
         const x = spawn(`pandoc /tmp/${invoice.$id}.md -o ${invoice.$id}.pdf --template=invoice`, {
@@ -220,7 +220,7 @@ position:
         x.stderr.on('data', (dt) => {
             console.log(dt.toString())
         })
-    })
+    }, 'Use the latex template to create a invoice.', ['--invoiceId'])
 
     cli.addCmd(['invoice', 'cancel'], (options) => {
         const invoice = ensureInvoice(options);
