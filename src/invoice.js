@@ -12,6 +12,7 @@ import { TestStorage } from './storage.js';
 /**
  * @typedef {Object} Invoice
  * @property {string} $id
+ * @property {number} dueInDays
  * @property {Date} $createdAt
  * @property {string} title
  * @property {number} number
@@ -49,9 +50,10 @@ export const getInvoices = ({after}) => invoices.filter(c => !after || c.$create
  * @param {InvoicePosition[]} positions
  * @returns {Invoice}
  */
-export function newInvoice(title, customer, positions = []) {
+export function newInvoice(title, dueInDays, customer, positions = []) {
     return {
         title,
+        dueInDays,
         $createdAt: new Date(),
         customer: customer,
         positions: positions,
@@ -76,6 +78,18 @@ export function finalizeInvoice(invoice) {
 export function addPosition(invoice, position) {
     invoice.positions.push(position);
     saveInvoices();
+}
+
+export function calculateMetrics(invoice) {
+    const sum = invoice.positions.reduce((prev, curr) => prev + +curr.amount, 0);
+    const sumWithTax = invoice.positions.reduce((prev, curr) => prev + +curr.amount * (1 + (curr.taxPercentage / 100)),0);
+
+    const hoursWorked = invoice.positions.reduce((prev, curr) => prev + curr?.hours, 0);
+    return {
+        sum,
+        sumWithTax,
+        hoursWorked,
+    };
 }
 
 /**

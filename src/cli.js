@@ -2,7 +2,7 @@ import { spawn } from "node:child_process";
 import { writeFileSync } from "node:fs";
 import { stdin, stdout } from "node:process";
 import readline from "node:readline";
-import { getInvoices, loadInvoices, newInvoice, storeInvoice, getInvoice, finalizeInvoice, cancelInvoice, addPosition, removePosition } from "./invoice.js";
+import { getInvoices, loadInvoices, newInvoice, storeInvoice, getInvoice, finalizeInvoice, cancelInvoice, addPosition, removePosition, calculateMetrics } from "./invoice.js";
 
 const ask = async (question) => {
   return new Promise((resolve) => {
@@ -85,11 +85,11 @@ async function verify(object) {
 async function main() {
     const cli = Cli();
     cli.addCmd(['invoice', 'create'], async () => {
-        console.log("Creating a new invoice")
         const title = await ask('Invoice title');
+        const dueInDays = await ask('Enter days when due. (Leave empty for 14 days)') || 14;
         const customer = await ask('Customer name');
 
-        const invoice = newInvoice(title, {email: 'panov', name: customer}, []);
+        const invoice = newInvoice(title, +dueInDays, {email: 'panov', name: customer}, []);
 
         const verified = await verify(invoice);
 
@@ -115,11 +115,11 @@ async function main() {
 
     cli.addCmd(['invoice', 'details'], (options) => {
         const invoice = ensureInvoice(options);
+        const {sum, sumWithTax, hoursWorked} = calculateMetrics(invoice);
         console.log(invoice);
-        
-
-        const sum = invoice.positions.reduce((prev, curr) => prev + +curr.amount, 0);
-        console.log("Sum:", sum, "€ with tax:", invoice.positions.reduce((prev, curr) => prev + +curr.amount * (1 + (curr.taxPercentage / 100)),0) + " €");
+        console.log("Sum", sum)
+        console.log("Sum w/ tax", sumWithTax)
+        console.log("Hours", hoursWorked)
     }, "Display full invoice", ['--invoiceId']);
 
     cli.addCmd(['invoice', 'addPosition'], async (options) => {
@@ -184,8 +184,8 @@ async function main() {
         const invoice = ensureInvoice(options);
 
         const content = `---
-number: DRAFT-${invoice.number}
-dueIn: 14
+number: ${invoice.number}
+dueIn: ${invoice.dueInDays}
 customer:
     name: ${invoice.customer.name}
     email: info@isar-heiztechnik.de
@@ -199,7 +199,7 @@ position:
         ${pos.description}
       amount: ${pos.hours}
       unit: h
-      price: ${pos.amount}
+      price: ${pos.amount / pos.hours}
       vat: ${pos.taxPercentage}`
     }).join('\n\t')}
 ...
