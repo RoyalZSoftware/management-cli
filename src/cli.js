@@ -2,6 +2,7 @@ import { spawn } from "node:child_process";
 import { writeFileSync } from "node:fs";
 import { stdin, stdout } from "node:process";
 import readline from "node:readline";
+import { getCustomers, loadCustomers, newCustomer, storeCustomer } from "./crm.js";
 import { getInvoices, loadInvoices, newInvoice, storeInvoice, getInvoice, finalizeInvoice, cancelInvoice, addPosition, removePosition, calculateMetrics } from "./invoice.js";
 
 const ask = async (question) => {
@@ -89,9 +90,35 @@ async function main() {
     cli.addCmd(['invoice', 'create'], async () => {
         const title = await ask('Invoice title');
         const dueInDays = await ask('Enter days when due. (Leave empty for 14 days)') || 14;
-        const customer = await ask('Customer name');
+        const customerQuery = await ask('Select a customer. Please enter a query: ');
+        let selectedCustomer = undefined;
 
-        const invoice = newInvoice(title, +dueInDays, {email: 'panov', name: customer}, []);
+        while (customerQuery != 'q' || selectedCustomer != undefined) {
+            const customers = getCustomers(customerQuery);
+            if (customers.length === 0) {
+                console.log("Nothing found. Please try a different query. Enter 'q' to exit")
+                continue;
+            }
+
+            customers.forEach((customer, i) => {
+                console.log(i + ") " + customer.name + ", " + customer.email)
+            })
+
+            const result = await ask("Enter the index. Enter 'q' to exit. Enter 'r' to search again");
+
+            if (result == 'q') break;
+            if (result == 'r') break;
+            
+            if (+result == NaN) {
+                throw new Error("Invalid index.");
+            }
+
+            selectedCustomer = customers[+result];
+            break;
+        }
+        if (selectedCustomer == undefined) throw new Error('No customer selected.');
+
+        const invoice = newInvoice(title, +dueInDays, selectedCustomer, []);
 
         const verified = await verify(invoice);
 
@@ -226,6 +253,28 @@ position:
         const invoice = ensureInvoice(options);
         cancelInvoice(invoice);
     }, 'Finalizes an invoice', ['--invoiceId']);
+    cli.addCmd(['customer', 'create'], async (options) => {
+        const name = await ask('Customer name');
+        const email = await ask('Customer email');
+        const address = await ask('Customer address');
+
+        const customer = newCustomer(name, email, address);
+
+        const verified = await verify(customer);
+
+        if (!verified) return;
+
+        storeCustomer(customer);
+
+    }, 'Create a new customer');
+    cli.addCmd(['customer', 'list'], async (options) => {
+        const customers = getCustomers();
+
+        customers.forEach((customer) => {
+            console.log(customer.$id + ""+ customer.name);
+        });
+    }, 'List all customers');
+    loadCustomers();
     loadInvoices();
 
     try {

@@ -1,3 +1,4 @@
+import { getCustomer } from "./crm.js";
 import { ID } from "./id.js";
 import { TestStorage } from './storage.js';
 
@@ -29,14 +30,22 @@ import { TestStorage } from './storage.js';
  */
 const invoices = [];
 const saveInvoices = (storage = TestStorage) => {
-    storage().save('invoices', invoices);
+    storage().save('invoices', invoices.map(c => {
+        console.log(c);
+        return {
+        ...c,
+        customer: c.customer.$id,
+    }}));
 }
 
 export const loadInvoices = (storage = TestStorage) => {
     const loaded = storage().load('invoices');
     if (loaded == undefined) return;
     loaded.forEach((invoice) => {
-        invoices.push(invoice);
+        invoices.push({
+            ...invoice,
+            customer: getCustomer(invoice.customer.$id)
+        });
     });
 }
 
@@ -106,6 +115,7 @@ export function removePosition(invoice, positionIndex) {
  */
 export const storeInvoice = (invoice) => {
     invoice.number = invoices.length;
+    console.log(invoice);
     invoices.push({...invoice, $id: ID()});
     saveInvoices();
 }
