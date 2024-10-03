@@ -28,7 +28,7 @@ export function TestStorage() {
             const dataStr = fs.readFileSync('./data.json');
             const data = JSON.parse(dataStr ?? '{}');
             data[key] = value;
-            return fs.writeFileSync('./data.json', JSON.stringify(data));
+            return fs.writeFileSync('./data.json', JSON.stringify(data, undefined, 2));
         }
     };
 }

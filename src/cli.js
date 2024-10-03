@@ -276,20 +276,24 @@ position:
     }, 'List all customers');
 
     cli.addCmd(['time', 'start'], async (options) => {
-        const entry = startTimeTracking("test");
+        
+        const description = options.description ?? (await ask("Please enter a description"));
+
+        const entry = startTimeTracking(description);
         console.log("Started time tracking.", entry);
-    });
+    }, "Start time tracking", ['--description']);
     cli.addCmd(['time', 'stop'], async (options) => {
         const entry = stopTimeTracking();
         console.log("Stopped time tracking.", entry);
-    });
+    }, "Stop time tracking");
     cli.addCmd(['time', 'list'], async (options) => {
+
         const entries = getTimeTrackingEntries();
 
         entries.forEach((entry) => {
             console.log(entry.start + " - " + entry.end + " - " + entry.description);
         });
-    });
+    }, "List time tracking entries");
 
     loadCustomers();
     loadTimeTrackingEntries();
