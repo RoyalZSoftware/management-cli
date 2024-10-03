@@ -4,6 +4,7 @@ import { stdin, stdout } from "node:process";
 import readline from "node:readline";
 import { getCustomers, loadCustomers, newCustomer, storeCustomer } from "./crm.js";
 import { getInvoices, loadInvoices, newInvoice, storeInvoice, getInvoice, finalizeInvoice, cancelInvoice, addPosition, removePosition, calculateMetrics } from "./invoice.js";
+import { getTimeTrackingEntries, loadTimeTrackingEntries, startTimeTracking, stopTimeTracking } from "./timetracking.js";
 
 const ask = async (question) => {
   return new Promise((resolve) => {
@@ -217,10 +218,9 @@ number: ${invoice.number}
 dueIn: ${invoice.dueInDays}
 customer:
     name: ${invoice.customer.name}
-    email: info@isar-heiztechnik.de
+    email: ${invoice.customer.email}
     address: |
-        Industriestraße 48 \\\\
-        82194 Gröbenzell
+        ${invoice.customer.address}
 position:
     ${invoice.positions.map((pos) => {
     return `
@@ -274,7 +274,25 @@ position:
             console.log(customer.$id + ""+ customer.name);
         });
     }, 'List all customers');
+
+    cli.addCmd(['time', 'start'], async (options) => {
+        const entry = startTimeTracking("test");
+        console.log("Started time tracking.", entry);
+    });
+    cli.addCmd(['time', 'stop'], async (options) => {
+        const entry = stopTimeTracking();
+        console.log("Stopped time tracking.", entry);
+    });
+    cli.addCmd(['time', 'list'], async (options) => {
+        const entries = getTimeTrackingEntries();
+
+        entries.forEach((entry) => {
+            console.log(entry.start + " - " + entry.end + " - " + entry.description);
+        });
+    });
+
     loadCustomers();
+    loadTimeTrackingEntries();
     loadInvoices();
 
     try {
