@@ -34,7 +34,7 @@ const saveInvoices = (storage = TestStorage) => {
         console.log(c);
         return {
         ...c,
-        customer: c.customer.$id,
+        customer: {$id: c.customer.$id},
     }}));
 }
 
