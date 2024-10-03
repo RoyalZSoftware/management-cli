@@ -1,3 +1,5 @@
+import { spawn } from "node:child_process";
+import { writeFileSync } from "node:fs";
 import { stdin, stdout } from "node:process";
 import readline from "node:readline";
 import { getInvoices, loadInvoices, newInvoice, storeInvoice, getInvoice, finalizeInvoice, cancelInvoice, addPosition, removePosition } from "./invoice.js";
@@ -177,6 +179,48 @@ async function main() {
         const invoice = ensureInvoice(options);
         finalizeInvoice(invoice);
     }, 'Finalizes an invoice', ['--invoiceId']);
+    
+    cli.addCmd(['invoice', 'generatePdf'], (options) => {
+        const invoice = ensureInvoice(options);
+
+        const content = `---
+number: DRAFT-${invoice.number}
+dueIn: 14
+customer:
+    name: ${invoice.customer.name}
+    email: info@isar-heiztechnik.de
+    address: |
+        Industriestraße 48 \\\\
+        82194 Gröbenzell
+position:
+    ${invoice.positions.map((pos) => {
+    return `
+    - name: |
+        ${pos.description}
+      amount: ${pos.hours}
+      unit: h
+      price: ${pos.amount}
+      vat: ${pos.taxPercentage}`
+    }).join('\n\t')}
+...
+        `;
+
+        console.log(content);
+
+        writeFileSync('/tmp/' + invoice.$id + ".md", content, {flag: 'w+'})
+
+        const x = spawn(`pandoc /tmp/${invoice.$id}.md -o ${invoice.$id}.pdf --template=invoice`, {
+            shell: true,
+            cwd: process.cwd(),
+        })
+
+        x.stdout.on('data', (dt) => {
+            console.log(dt.toString())
+        })
+        x.stderr.on('data', (dt) => {
+            console.log(dt.toString())
+        })
+    })
 
     cli.addCmd(['invoice', 'cancel'], (options) => {
         const invoice = ensureInvoice(options);

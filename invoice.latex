@@ -1,0 +1,115 @@
+\documentclass{letter}
+\RequirePackage{longtable}
+\RequirePackage{tikz}     % tikz est utilisé pour tracer des boites, par exemple
+\RequirePackage{colortbl}
+\RequirePackage{xcolor}
+\RequirePackage{advdate}
+\usepackage{fp}
+\usepackage{lmodern,textcomp}
+\usepackage[german]{babel}
+\usepackage{geometry}
+ \geometry{
+ a4paper,
+ total={170mm,257mm},
+ left=20mm,
+ top=20mm,
+ }
+\definecolor{light}{HTML}{888888}
+\newcommand{\libelle}[1]{\textcolor{light}{\textbf#1}}
+\newcommand\printpercent[2]{\FPeval\result{round(#1*100/#2,1)}\result\%}
+\newenvironment{invoice}{%
+    \setlength{\extrarowheight}{0.0ex}
+    \setlength{\tabcolsep}{0.5em}
+    \setlength\LTleft{0pt}
+    \setlength\LTright{0pt}
+    \definecolor{rowcolor}{RGB}{111,111,111}
+    \newcommand{\ntxt}{Rechnungsnummer}
+
+    $for(position)$
+        {\FPeval\result{round($position.amount$ * $position.price$, 1)}}
+    $endfor$
+
+    \newcounter{position}
+    \begin{longtable}{@{\extracolsep{\fill}}c|p{5cm}|l|r|r|r|r@{}}%
+        Pos &
+        Name &
+        Anzahl &
+        Einzelpreis &
+        Summe &
+        MwSt &
+        Gesamt \\
+        \arrayrulecolor{rowcolor}
+        \endhead%
+        $for(position)$
+            \addtocounter{position}{1} \arabic{position} &
+            \parbox[t]{5cm}{$position.name$} &
+            $position.amount$ $position.unit$ &
+            \FPeval\result{round($position.price$, 2)}\result € &
+            \FPeval\result{round($position.price$ * $position.amount$, 2)}\result € &
+            \FPeval\result{round((round($position.price$ * $position.amount$, 2) * $position.vat$)/100, 2)}\result € ($position.vat$\%) &
+            \FPeval\result{round((round($position.price$ * $position.amount$, 2) * (100 + $position.vat$)) / 100, 2)}\result € ($position.vat$\%) \\
+        $endfor$
+    \caption{Positionen}
+    \end{longtable}
+    \def\total{\FPeval\result{round($for(position)$
+        $position.amount$*$position.price$ +
+    $endfor$0, 2)}\result}
+    \def\taxedTotal{\FPeval\result{round($for(position)$
+        ($position.amount$*$position.price$) * ((100 + $position.vat$) / 100) +
+    $endfor$0, 2)}\result}
+
+    \hspace*{0pt}\hfill Gesamt(Netto): \total €\\
+    \hspace*{0pt}\hfill Gesamt(Brutto): \underline{\textbf{\taxedTotal €}}\\
+}% end closing part of environment
+
+\begin{document}
+\noindent\begin{tikzpicture}
+    \noindent\node[font=\bf\Large,text width=0.7\textwidth]{%
+    RoyalZSoftware UG \\
+    (haftungsbeschränkt)
+    };
+    \noindent\node(b)[xshift=0.3\textwidth,text width=0.7\textwidth,right]{%
+        Lärchenstraße 3 \\
+        82362 Weilheim in Oberbayern \\
+        Deutschland \\
+        getintouch@royalzsoftware.de
+    };
+
+    \coordinate[xshift=-\textwidth-5mm,yshift=1ex] (a) at (b.north);
+    \coordinate[xshift=-5mm,yshift=-1ex] (c) at (b.south);
+    \draw[color=light,line width=0.5mm] (a) rectangle  (c);
+\end{tikzpicture}
+\\
+\\
+\hspace*{0pt}\hfill Datum: \today \\
+{\huge\libelle{Rechnung} RE-$number$}\\
+\\
+{\Large Empfänger}\\
+\\
+\noindent\begin{tabular}{l l}
+\libelle{Name} & $customer.name$ \\
+\libelle{Email} & $customer.email$ \\
+\libelle{Addresse} & $customer.address$
+\end{tabular}
+
+\vspace{5mm}
+{\Large Zusammenfassung}\\
+$if(summary)$ $summary$ $else$
+Für unsere Leistungen im Bereich der Software Entwicklung erlauben wir uns folgende Positionen in Rechnung zu stellen.\\
+$endif$
+{\Large Positionen}
+\begin{invoice}
+\end{invoice}
+$if(body)$
+$body$
+$else$
+Bitte überweisen Sie den ausgewiesenen Betrag innerhalb von $dueIn$ Tagen (bis zum \underline{\textbf{\AdvanceDate[$dueIn$]\today}}) auf das angegebene Konto.
+$endif$
+
+{\Large Konto}
+\begin{verbatim}
+Empfänger: RoyalZSoftware UG (haftungsbeschränkt)
+IBan: DE64 1001 7997 5743 8176 69
+Verwendungszweck: RE-$number$
+\end{verbatim}
+\end{document}
